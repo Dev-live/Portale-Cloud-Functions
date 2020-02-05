@@ -1,6 +1,6 @@
 {
-  "name": "functions",
-  "description": "Cloud Functions for Firebase",
+  "name": "chat-code-troll",
+  "description": "Cloud Functions for Firebase Notifications",
   "scripts": {
     "lint": "eslint .",
     "serve": "firebase serve --only functions",
@@ -13,6 +13,7 @@
     "node": "8"
   },
   "dependencies": {
+    "child-process-promise": "^2.2.1",
     "firebase-admin": "^8.6.0",
     "firebase-functions": "^3.3.0"
   },

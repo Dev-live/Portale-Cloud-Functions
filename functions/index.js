@@ -1,32 +1,44 @@
 // The Cloud Functions for Firebase SDK to create Cloud Functions and setup triggers.
-const functions = require("firebase-functions");
+const functions = require('firebase-functions');
 
-// The Firebase Admin SDK to access the Firebase Realtime Database.
-const admin = require("firebase-admin");
-admin.initializeApp();
+// The Firebase Admin SDK to access the Firebase Realtime Database. 
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+const spawn = require('child-process-promise').spawn;
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
 
-exports.sendNewTripNotification = functions.database
-  .ref("/{uid}/shared_trips/")
-  .onWrite(event => {
-    const uuid = event.params.uid;
 
-    console.log("User to send notification", uuid);
+exports.sendGroupCreatedNotification = functions.database.ref('/group/{groupId}').onCreate(event => {
 
-    var ref = admin.database().ref(`Users/${uuid}/token`);
-    return ref.once(
-      "value",
-      function(snapshot) {
-        const payload = {
-          notification: {
-            title: "You have been invited to a trip.",
-            body: "Tap here to check it out!"
-          }
-        };
+}
+);
 
-        admin.messaging().sendToDevice(snapshot.val(), payload);
-      },
-      function(errorObject) {
-        console.log("The read failed: " + errorObject.code);
-      }
-    );
+
+exports.sendChatNotifications = functions.database.ref('/group/{groupId}/lastMessage').onWrite(event => { 
+
+}
+);
+
+// cleans up the tokens that are no longer valid.
+function cleanupTokens(response, tokens) {
+  const tokensDelete = [];
+  response.resultsvar obj = {dev: '/dev.json', test: '/test.json', prod: '/prod.json'};
+  var configs = {};
+  async.forEachOf(obj, function (value, key, callback) {
+    fs.readFile(__dirname + value, 'utf8', function (err, data) {
+      if (err) return callback(err);
+      try {
+        configs[key] = JSON.parse(data);
+      } catch (e) {
+        return callback(e);
+    }
+    callback();
+    });
+  }, function (err) {
+    if (err) console.error(err.message);
+    // configs is now a map of JSON data
+    doSomethingWith(configs);
   });
+}
