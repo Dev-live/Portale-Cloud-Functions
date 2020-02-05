@@ -24,21 +24,16 @@ exports.sendChatNotifications = functions.database.ref('/group/{groupId}/lastMes
 // cleans up the tokens that are no longer valid.
 function cleanupTokens(response, tokens) {
   const tokensDelete = [];
-  response.resultsvar obj = {dev: '/dev.json', test: '/test.json', prod: '/prod.json'};
-  var configs = {};
-  async.forEachOf(obj, function (value, key, callback) {
-    fs.readFile(__dirname + value, 'utf8', function (err, data) {
-      if (err) return callback(err);
-      try {
-        configs[key] = JSON.parse(data);
-      } catch (e) {
-        return callback(e);
+  response.results.forEach((result, index) => {
+    const error = result.error;
+    if (error) {
+      console.error('Failure sending Notification to ', tokens[index], error);
+      if (error.code === 'messaging/invalid-registration-tokens' ||
+        error.code === 'messaging/registration-token-not-registered') {
+        const deleteTask = admin.firestore().collection('fcmTokens').doc(tokens[index]).delete();
+        tokensDelete.push(deleteTask);
+      }
     }
-    callback();
-    });
-  }, function (err) {
-    if (err) console.error(err.message);
-    // configs is now a map of JSON data
-    doSomethingWith(configs);
   });
+  return Promise.all(tokensDelete);
 }
