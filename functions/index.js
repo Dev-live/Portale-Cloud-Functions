@@ -10,73 +10,64 @@ const os = require('os');
 const fs = require('fs');
 
 
-exports.sendGroupCreatedNotification = functions.database.ref('/group/{groupId}').onCreate(event => {
+exports.sendNotification = functions.database.ref('/messages/{userId}/{messageId}').onWrite(event => {
+    //get the userId of the person receiving the notification because we need to get their token
+    const receiverId = event.params.userId;
+    console.log("receiverId: ", receiverId);
 
-}
-);
+    //get the user id of the person who sent the message
+    const senderId = event.data.child('user_id').val();
+    console.log("senderId: ", senderId);
 
+    //get the message
+    const message = event.data.child('message').val();
+    console.log("message: ", message);
 
-exports.sendChatNotifications = functions.database.ref('/group/{groupId}/lastMessage').onWrite(event => { 
+    //get the message id. We'll be sending this in the payload
+    const messageId = event.params.messageId;
+    console.log("messageId: ", messageId);
 
-}
-);
-exports.sendNotification = functions.database
-    .ref("/message/{userId}/{pushId}")
-    .onWrite(event => {
-      const snapshot = event.data;
-      const userId = event.params.userId;
-      if (snapshot.previous.val()) {
-        return;
-      }
-      if (snapshot.val().name !== "ADMIN") {
-        return;
-      }
-      const text = snapshot.val().text;
-      const payload = {
-        notification: {
-          title: `New message by ${snapshot.val().name}`,
-          body: text
-            ? text.length <= 100 ? text : text.substring(0, 97) + "..."
-            : ""
-        }
-      };
-      return admin
-        .database()
-        .ref(`data/${userId}/customerData`)
-        .once('value')
-        .then(data => {
-          console.log('inside', data.val().notificationKey);
-          if (data.val().notificationKey) {
-            return admin.messaging().sendToDevice(data.val().notificationKey, payload);
-          }
+    //get the message id. We'll be sending this in the payload
+    const image = event.params.imageUrl;
+    console.log("imageUrl: ", image);
+
+    //query the users node and get the name of the user who sent the message
+    return admin.database().ref("/users/" + senderId).once('value').then(snap => {
+        const senderName = snap.child("name").val();
+        console.log("senderName: ", senderName);
+
+        //get the token of the user receiving the message
+        return admin.database().ref("/users/" + receiverId).once('value').then(snap => {
+            const token = snap.child("messaging_token").val();
+            console.log("token: ", token);
+
+            //we have everything we need
+            //Build the message payload and send the message
+            console.log("Construction the notification message.");
+            const payload = {
+                data: {
+                    data_type: "direct_message",
+                    title: "New Message from " + senderName,
+                    message: message,
+                    message_id: messageId,
+                    image: image,
+                }
+            };
+
+            let promise =  admin.messaging().sendToDevice(token, payload)
+
+                promise.then(function(response) {
+                    console.log("Successfully sent message:", response);
+                })
+                .catch(function(error) {
+                    console.log("Error sending message:", error);
+                });
+            promise.then(r => cleanupTokens(r,token));
+            return promise
         });
     });
-
-exports.sendMessageNotification = functions.database.ref('conversations/{conversationID}/messages/{messageID}').onWrite(event => {
-    if (event.data.previous.exists()) {
-        return;
-    }
-
-    firebase.database().ref('messages').child(event.params.messageID).once('value').then(function(snap) {
-        var messageData = snap.val();
-
-        var topic = 'notifications_' + messageData.receiverKey;
-        var payload = {
-            notification: {
-                title: "You got a new Message",
-                body: messageData.content,
-            }
-        };
-
-        admin.messaging().sendToTopic(topic, payload)
-            .then(function(response) {
-                console.log("Successfully sent message:", response);
-            })
-            .catch(function(error) {
-                console.log("Error sending message:", error);
-            });
-    });
 });
+
 
 // cleans up the tokens that are no longer valid.
 function cleanupTokens(response, tokens) {
