@@ -1,1 +1,6 @@
-{}
+{
+  "projects": {
+    "test": "sfn-backend-220407",
+    "default": "sfn-backend-220407"
+  }
+}

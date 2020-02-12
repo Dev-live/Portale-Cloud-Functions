@@ -59,3 +59,44 @@ exports.sendMessageNotification = functions.database.ref('conversations/{convers
     });
 });
 ```
+
+```
+export const subscribeToTopic = functions.https.onCall(
+  async (data, context) => {
+    await admin.messaging().subscribeToTopic(data.token, data.topic);
+
+    return `subscribed to ${data.topic}`;
+  }
+);
+
+export const unsubscribeFromTopic = functions.https.onCall(
+  async (data, context) => {
+    await admin.messaging().unsubscribeFromTopic(data.token, data.topic);
+
+    return `unsubscribed from ${data.topic}`;
+  }
+);
+
+
+
+const payload: admin.messaging.Message = {
+  notification,
+  webpush: {
+    notification: {
+      vibrate: [200, 100, 200],
+      icon: 'https://angularfirebase.com/images/logo.png',
+      actions: [
+        {
+          action: 'like',
+          title: '👍 Yaaay!'
+        },
+        {
+          action: 'dislike',
+          title: 'Boooo!'
+        }
+      ]
+    }
+  },
+  topic: 'discounts'
+}; 
+```
